@@ -1,9 +1,9 @@
-# Best model: Stacked LSTM-256x2
+# Best model: AWD-LSTM (weight-drop + tied embed + var dropout, seq=40)
 
-- Re-trained test perplexity: **69.86**
-- Re-trained test top-1 accuracy: **22.33%**
-- Re-trained test top-5 accuracy: **46.07%**
-- Inference latency (median, 40 tokens): **60 ms** (1.50 ms/token)
+- Re-trained test perplexity: **64.19**
+- Re-trained test top-1 accuracy: **22.91%**
+- Re-trained test top-5 accuracy: **47.38%**
+- Inference latency (median, 40 tokens): **90 ms** (2.26 ms/token)
 
 ## Greedy generation (argmax at each step)
 
@@ -11,68 +11,68 @@ _Greedy decoding intentionally surfaces the model's single most-confident contin
 
 ### Seed: `'i saw holmes'`
 
-> i saw holmes , and i was a little of the matter , and i had been in the time of the matter . i have been able to see that i have been able to see the matter . i have been
+> i saw holmes , and the whole of the lady was a small , and the other of the country , the other of the city of the country , which was a small , and the other of the country , the
 
 #### Step-by-step top-5 trace
 
 | Step | Context tail | Chosen | Top-5 (word: prob) |
 |---:|---|---|---|
-| 1 | …<pad> <pad> <pad> i saw holmes | **,** | `,`: 0.115, `.`: 0.101, `and`: 0.059, `in`: 0.052, `to`: 0.041 |
-| 2 | …<pad> <pad> i saw holmes , | **and** | `and`: 0.360, `but`: 0.082, `with`: 0.058, `for`: 0.033, `which`: 0.030 |
-| 3 | …<pad> i saw holmes , and | **i** | `i`: 0.125, `the`: 0.101, `he`: 0.052, `that`: 0.048, `a`: 0.043 |
-| 4 | …i saw holmes , and i | **was** | `was`: 0.104, `had`: 0.079, `could`: 0.061, `have`: 0.061, `saw`: 0.036 |
-| 5 | …saw holmes , and i was | **a** | `a`: 0.037, `not`: 0.033, `glad`: 0.021, `in`: 0.020, `very`: 0.018 |
-| 6 | …holmes , and i was a | **little** | `little`: 0.080, `very`: 0.062, `man`: 0.035, `good`: 0.019, `considerable`: 0.019 |
-| 7 | …, and i was a little | **of** | `of`: 0.031, `,`: 0.022, `man`: 0.019, `more`: 0.019, `little`: 0.016 |
-| 8 | …and i was a little of | **the** | `the`: 0.166, `a`: 0.095, `my`: 0.047, `his`: 0.019, `them`: 0.016 |
-| 9 | …i was a little of the | **matter** | `matter`: 0.018, `house`: 0.010, `same`: 0.010, `city`: 0.010, `room`: 0.009 |
-| 10 | …was a little of the matter | **,** | `,`: 0.164, `.`: 0.160, `to`: 0.052, `in`: 0.051, `and`: 0.046 |
-| 11 | …a little of the matter , | **and** | `and`: 0.310, `but`: 0.129, `which`: 0.051, `for`: 0.035, `so`: 0.035 |
-| 12 | …little of the matter , and | **i** | `i`: 0.127, `the`: 0.101, `that`: 0.090, `he`: 0.046, `yet`: 0.035 |
-| 13 | …of the matter , and i | **had** | `had`: 0.086, `have`: 0.085, `was`: 0.083, `could`: 0.058, `should`: 0.027 |
-| 14 | …the matter , and i had | **been** | `been`: 0.063, `not`: 0.049, `no`: 0.042, `a`: 0.041, `seen`: 0.037 |
-| 15 | …matter , and i had been | **in** | `in`: 0.026, `a`: 0.024, `able`: 0.023, `seen`: 0.023, `so`: 0.020 |
-| 16 | …, and i had been in | **the** | `the`: 0.224, `a`: 0.118, `my`: 0.067, `his`: 0.024, `an`: 0.019 |
-| 17 | …and i had been in the | **time** | `time`: 0.024, `room`: 0.020, `way`: 0.015, `matter`: 0.014, `morning`: 0.014 |
-| 18 | …i had been in the time | **of** | `of`: 0.327, `that`: 0.206, `,`: 0.107, `to`: 0.047, `.`: 0.045 |
-| 19 | …had been in the time of | **the** | `the`: 0.355, `my`: 0.089, `a`: 0.059, `this`: 0.030, `his`: 0.022 |
-| 20 | …been in the time of the | **matter** | `matter`: 0.024, `same`: 0.014, `house`: 0.013, `time`: 0.011, `sort`: 0.010 |
-| 21 | …in the time of the matter | **.** | `.`: 0.306, `,`: 0.179, `to`: 0.055, `and`: 0.039, `which`: 0.033 |
-| 22 | …the time of the matter . | **i** | `i`: 0.126, `it`: 0.079, `the`: 0.066, `he`: 0.049, `but`: 0.035 |
-| 23 | …time of the matter . i | **have** | `have`: 0.092, `had`: 0.068, `was`: 0.059, `am`: 0.057, `think`: 0.031 |
-| 24 | …of the matter . i have | **been** | `been`: 0.103, `not`: 0.071, `no`: 0.064, `heard`: 0.058, `a`: 0.044 |
-| 25 | …the matter . i have been | **able** | `able`: 0.031, `a`: 0.028, `seen`: 0.022, `in`: 0.022, `so`: 0.020 |
-| 26 | …matter . i have been able | **to** | `to`: 0.884, `in`: 0.019, `for`: 0.018, `,`: 0.018, `with`: 0.009 |
-| 27 | …. i have been able to | **see** | `see`: 0.069, `be`: 0.059, `think`: 0.057, `know`: 0.042, `hear`: 0.035 |
-| 28 | …i have been able to see | **that** | `that`: 0.092, `the`: 0.091, `you`: 0.088, `it`: 0.066, `him`: 0.056 |
-| 29 | …have been able to see that | **i** | `i`: 0.101, `the`: 0.083, `you`: 0.081, `it`: 0.056, `this`: 0.043 |
-| 30 | …been able to see that i | **have** | `have`: 0.149, `am`: 0.097, `should`: 0.075, `was`: 0.074, `had`: 0.072 |
-| 31 | …able to see that i have | **been** | `been`: 0.093, `not`: 0.050, `a`: 0.045, `ever`: 0.039, `no`: 0.037 |
-| 32 | …to see that i have been | **able** | `able`: 0.038, `a`: 0.032, `seen`: 0.030, `in`: 0.024, `so`: 0.024 |
-| 33 | …see that i have been able | **to** | `to`: 0.908, `,`: 0.018, `for`: 0.016, `.`: 0.013, `in`: 0.010 |
-| 34 | …that i have been able to | **see** | `see`: 0.057, `be`: 0.056, `think`: 0.042, `know`: 0.041, `have`: 0.032 |
-| 35 | …i have been able to see | **the** | `the`: 0.098, `you`: 0.096, `it`: 0.062, `that`: 0.056, `him`: 0.051 |
-| 36 | …have been able to see the | **matter** | `matter`: 0.045, `little`: 0.022, `police`: 0.017, `man`: 0.015, `facts`: 0.012 |
-| 37 | …been able to see the matter | **.** | `.`: 0.274, `,`: 0.148, `to`: 0.062, `of`: 0.047, `?`: 0.039 |
-| 38 | …able to see the matter . | **i** | `i`: 0.153, `it`: 0.073, `but`: 0.050, `and`: 0.045, `you`: 0.043 |
-| 39 | …to see the matter . i | **have** | `have`: 0.120, `am`: 0.102, `shall`: 0.060, `was`: 0.043, `think`: 0.042 |
-| 40 | …see the matter . i have | **been** | `been`: 0.096, `no`: 0.074, `not`: 0.074, `heard`: 0.061, `a`: 0.054 |
+| 1 | …<pad> <pad> <pad> i saw holmes | **,** | `,`: 0.110, `.`: 0.074, `in`: 0.047, `that`: 0.034, `the`: 0.028 |
+| 2 | …<pad> <pad> i saw holmes , | **and** | `and`: 0.073, `the`: 0.057, `as`: 0.031, `with`: 0.030, `i`: 0.021 |
+| 3 | …<pad> i saw holmes , and | **the** | `the`: 0.087, `i`: 0.044, `that`: 0.031, `a`: 0.029, `his`: 0.028 |
+| 4 | …i saw holmes , and the | **whole** | `whole`: 0.019, `only`: 0.013, `other`: 0.012, `man`: 0.011, `lady`: 0.009 |
+| 5 | …saw holmes , and the whole | **of** | `of`: 0.041, `,`: 0.030, `was`: 0.019, `point`: 0.010, `and`: 0.009 |
+| 6 | …holmes , and the whole of | **the** | `the`: 0.121, `a`: 0.030, `his`: 0.013, `my`: 0.011, `which`: 0.010 |
+| 7 | …, and the whole of the | **lady** | `lady`: 0.010, `house`: 0.010, `man`: 0.009, `case`: 0.008, `matter`: 0.008 |
+| 8 | …and the whole of the lady | **was** | `was`: 0.116, `of`: 0.110, `,`: 0.106, `had`: 0.101, `who`: 0.040 |
+| 9 | …the whole of the lady was | **a** | `a`: 0.046, `in`: 0.023, `the`: 0.019, `very`: 0.017, `not`: 0.015 |
+| 10 | …whole of the lady was a | **small** | `small`: 0.038, `very`: 0.024, `little`: 0.021, `man`: 0.016, `long`: 0.015 |
+| 11 | …of the lady was a small | **,** | `,`: 0.089, `one`: 0.041, `of`: 0.030, `man`: 0.022, `and`: 0.020 |
+| 12 | …the lady was a small , | **and** | `and`: 0.034, `the`: 0.023, `of`: 0.018, `with`: 0.013, `a`: 0.011 |
+| 13 | …lady was a small , and | **the** | `the`: 0.052, `a`: 0.051, `his`: 0.017, `,`: 0.015, `of`: 0.012 |
+| 14 | …was a small , and the | **other** | `other`: 0.011, `man`: 0.011, `rain`: 0.010, `windows`: 0.009, `light`: 0.008 |
+| 15 | …a small , and the other | **of** | `of`: 0.138, `was`: 0.094, `,`: 0.050, `had`: 0.021, `which`: 0.021 |
+| 16 | …small , and the other of | **the** | `the`: 0.194, `a`: 0.081, `his`: 0.028, `which`: 0.025, `my`: 0.016 |
+| 17 | …, and the other of the | **country** | `country`: 0.009, `man`: 0.008, `windows`: 0.008, `society`: 0.008, `red`: 0.007 |
+| 18 | …and the other of the country | **,** | `,`: 0.085, `of`: 0.068, `.`: 0.045, `was`: 0.037, `had`: 0.026 |
+| 19 | …the other of the country , | **the** | `the`: 0.066, `and`: 0.058, `which`: 0.053, `a`: 0.030, `who`: 0.022 |
+| 20 | …other of the country , the | **other** | `other`: 0.018, `man`: 0.010, `body`: 0.008, `only`: 0.007, `door`: 0.005 |
+| 21 | …of the country , the other | **of** | `of`: 0.178, `was`: 0.099, `,`: 0.060, `which`: 0.027, `is`: 0.020 |
+| 22 | …the country , the other of | **the** | `the`: 0.216, `a`: 0.063, `which`: 0.056, `his`: 0.023, `my`: 0.014 |
+| 23 | …country , the other of the | **city** | `city`: 0.012, `most`: 0.010, `red`: 0.009, `old`: 0.009, `country`: 0.009 |
+| 24 | …, the other of the city | **of** | `of`: 0.125, `,`: 0.111, `.`: 0.091, `was`: 0.045, `and`: 0.037 |
+| 25 | …the other of the city of | **the** | `the`: 0.132, `which`: 0.032, `a`: 0.027, `stoke`: 0.026, `whom`: 0.015 |
+| 26 | …other of the city of the | **country** | `country`: 0.012, `red`: 0.012, `city`: 0.011, `bride`: 0.011, `most`: 0.010 |
+| 27 | …of the city of the country | **,** | `,`: 0.127, `.`: 0.091, `of`: 0.083, `was`: 0.024, `had`: 0.017 |
+| 28 | …the city of the country , | **which** | `which`: 0.072, `the`: 0.070, `and`: 0.067, `a`: 0.024, `who`: 0.022 |
+| 29 | …city of the country , which | **was** | `was`: 0.126, `had`: 0.058, `is`: 0.046, `were`: 0.040, `i`: 0.027 |
+| 30 | …of the country , which was | **a** | `a`: 0.056, `the`: 0.043, `in`: 0.022, `found`: 0.017, `to`: 0.016 |
+| 31 | …the country , which was a | **small** | `small`: 0.044, `very`: 0.022, `little`: 0.018, `singular`: 0.017, `long`: 0.014 |
+| 32 | …country , which was a small | **,** | `,`: 0.053, `one`: 0.030, `of`: 0.025, `in`: 0.014, `and`: 0.014 |
+| 33 | …, which was a small , | **and** | `and`: 0.024, `of`: 0.022, `the`: 0.021, `with`: 0.011, `which`: 0.010 |
+| 34 | …which was a small , and | **the** | `the`: 0.058, `a`: 0.050, `,`: 0.013, `of`: 0.013, `in`: 0.012 |
+| 35 | …was a small , and the | **other** | `other`: 0.012, `windows`: 0.010, `rain`: 0.009, `man`: 0.009, `light`: 0.008 |
+| 36 | …a small , and the other | **of** | `of`: 0.145, `was`: 0.076, `,`: 0.043, `which`: 0.026, `the`: 0.018 |
+| 37 | …small , and the other of | **the** | `the`: 0.207, `a`: 0.078, `which`: 0.030, `his`: 0.025, `my`: 0.016 |
+| 38 | …, and the other of the | **country** | `country`: 0.010, `windows`: 0.008, `red`: 0.007, `society`: 0.007, `man`: 0.007 |
+| 39 | …and the other of the country | **,** | `,`: 0.078, `of`: 0.066, `.`: 0.052, `was`: 0.034, `were`: 0.024 |
+| 40 | …the other of the country , | **the** | `the`: 0.066, `which`: 0.060, `and`: 0.059, `a`: 0.029, `who`: 0.022 |
 
 ### Seed: `'the door opened and'`
 
-> the door opened and a little man , and the whole man was a little of the door , and the whole of the other of the window , and the whole man was a little of the window , and the whole of
+> the door opened and the door . the door was a small , and a pair of a man who was a small , and a pair of a man who is a very deep , and a pair of a man who is
 
 ### Seed: `'watson looked at the'`
 
-> watson looked at the room . i have been able to see that i have been able to be a little more than a little problem . i have been able to see you . i have been able to see you . i
+> watson looked at the last , and the other was a small , the old man , and the other was a small , the old man , and the other of the country , the other of the city of the city .
 
 ### Seed: `'it was a cold morning when'`
 
-> it was a cold morning when he had been in the room . i have been able to see that i have been able to see the matter . i have been able to see you . i have been able to see you . i
+> it was a cold morning when the night was a little , and the whole of the country , and the other was a small , and the rain of the drug , and the windows of the wood . the other was a small ,
 
 ### Seed: `'sherlock holmes lit his pipe'`
 
-> sherlock holmes lit his pipe , and the whole man was a little of the door , and the whole of the other , and the whole of the other of the other , and the lady , the lady , and the lady of
+> sherlock holmes lit his pipe , and the lamp was a small , and a pair of a man who is a very deep , and a pair of a man who is a very deep , and a little , the man who is
 
 ## Top-k sampled generation (k=5, temperature=0.9)
 
@@ -80,20 +80,20 @@ _Sampling from the model's top-5 candidates at each step (rather than always tak
 
 ### Seed: `'i saw holmes'`
 
-> i saw holmes , and the lady and the man had been in the table of a man who is a little of the most man . there was no sign of it , and i could not have the little , i
+> i saw holmes , and his whole eyes were at one side , and a long man , a man who had been a small one of those , which was a little of the old country . the lady had not been
 
 ### Seed: `'the door opened and'`
 
-> the door opened and his eyes and found , and the lady were a small man who would have been a very strong man . it is a common , i have a little man for a little business , and i have been
+> the door opened and , and i could hardly see that the matter was the only of the same time . i was in the house , and it was the very thought of the same . i was not to be a little
 
 ### Seed: `'watson looked at the'`
 
-> watson looked at the time of this case , and that i could not have a cab to be the machine to have the first of the matter . it was a very little , and the other is the most , the matter
+> watson looked at the hotel , i saw that the door was still the other of the floor . i found a few moments and was a small , the old man of the wood , and the windows were to be the very
 
 ### Seed: `'it was a cold morning when'`
 
-> it was a cold morning when a man who was a man who had been in my companion . it would be , however , but i had been able to see the police . it was a little man , i have not seen a
+> it was a cold morning when the matter was a little . i have a good time , and the other had not the time , and i was very much in the way . it was a little thing , but it is a very
 
 ### Seed: `'sherlock holmes lit his pipe'`
 
-> sherlock holmes lit his pipe , and his eyes were in his chair , and the man were a very very very man . i have seen it , and i am sorry to be in the house . i was glad to hear a
+> sherlock holmes lit his pipe , and his eyes was a black , black face , and a pair of a red red hair , and a broad black hat , a broad brimmed hat of a large , black , white , thin ,

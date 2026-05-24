@@ -1,0 +1,62 @@
+Device: mps
+
+=== 1. Loading & cleaning corpus ===
+{
+  "vocab_size": 3909,
+  "train_tokens": 96372,
+  "val_tokens": 12046,
+  "test_tokens": 12047,
+  "train_unk_rate": 0.03612044992321421,
+  "val_unk_rate": 0.06226133156234435,
+  "test_unk_rate": 0.07230015771561385,
+  "seq_len": 20
+}
+Default windowed sizes (seq_len=20): train=96,352  val=12,026  test=12,027
+
+=== Experiment: AWD-LSTM (weight-drop + tied embed + var dropout, seq=40) (awd_lstm) ===
+  seq_len override: 40  (train=96,332 val=12,006 test=12,007)
+  parameters: 2,057,285
+  ep  1/30  train_loss=5.9505 train_acc=0.1102  val_loss=5.0208 val_acc=0.1627 val_ppl=151.53  (19.4s)
+  ep  2/30  train_loss=5.3989 train_acc=0.1352  val_loss=4.8332 val_acc=0.1770 val_ppl=125.61  (18.9s)
+  ep  3/30  train_loss=5.2020 train_acc=0.1465  val_loss=4.6953 val_acc=0.1861 val_ppl=109.43  (18.8s)
+  ep  4/30  train_loss=5.0668 train_acc=0.1551  val_loss=4.6096 val_acc=0.1899 val_ppl=100.44  (19.1s)
+  ep  5/30  train_loss=4.9485 train_acc=0.1643  val_loss=4.5458 val_acc=0.1982 val_ppl=94.23  (19.1s)
+  ep  6/30  train_loss=4.8576 train_acc=0.1719  val_loss=4.4997 val_acc=0.1984 val_ppl=89.99  (19.0s)
+  ep  7/30  train_loss=4.7744 train_acc=0.1783  val_loss=4.4601 val_acc=0.2036 val_ppl=86.50  (19.1s)
+  ep  8/30  train_loss=4.7133 train_acc=0.1825  val_loss=4.4297 val_acc=0.2023 val_ppl=83.90  (19.5s)
+  ep  9/30  train_loss=4.6404 train_acc=0.1887  val_loss=4.4117 val_acc=0.2044 val_ppl=82.41  (19.0s)
+  ep 10/30  train_loss=4.5934 train_acc=0.1920  val_loss=4.3876 val_acc=0.2054 val_ppl=80.45  (19.1s)
+  ep 11/30  train_loss=4.5470 train_acc=0.1925  val_loss=4.3632 val_acc=0.2071 val_ppl=78.51  (19.0s)
+  ep 12/30  train_loss=4.5039 train_acc=0.1959  val_loss=4.3559 val_acc=0.2069 val_ppl=77.94  (18.8s)
+  ep 13/30  train_loss=4.4658 train_acc=0.1985  val_loss=4.3442 val_acc=0.2083 val_ppl=77.03  (19.0s)
+  ep 14/30  train_loss=4.4257 train_acc=0.2006  val_loss=4.3288 val_acc=0.2087 val_ppl=75.85  (18.6s)
+  ep 15/30  train_loss=4.3902 train_acc=0.2006  val_loss=4.3154 val_acc=0.2034 val_ppl=74.84  (18.9s)
+  ep 16/30  train_loss=4.3625 train_acc=0.2027  val_loss=4.3132 val_acc=0.2101 val_ppl=74.68  (18.9s)
+  ep 17/30  train_loss=4.3366 train_acc=0.2031  val_loss=4.3011 val_acc=0.2065 val_ppl=73.78  (19.0s)
+  ep 18/30  train_loss=4.3134 train_acc=0.2044  val_loss=4.2989 val_acc=0.2106 val_ppl=73.62  (19.1s)
+  ep 19/30  train_loss=4.2813 train_acc=0.2060  val_loss=4.2802 val_acc=0.2117 val_ppl=72.26  (18.9s)
+  ep 20/30  train_loss=4.2586 train_acc=0.2063  val_loss=4.2776 val_acc=0.2133 val_ppl=72.06  (19.0s)
+  ep 21/30  train_loss=4.2446 train_acc=0.2080  val_loss=4.2707 val_acc=0.2164 val_ppl=71.58  (19.1s)
+  ep 22/30  train_loss=4.2188 train_acc=0.2066  val_loss=4.2662 val_acc=0.2129 val_ppl=71.25  (19.0s)
+  ep 23/30  train_loss=4.2033 train_acc=0.2091  val_loss=4.2689 val_acc=0.2148 val_ppl=71.45  (19.0s)
+  ep 24/30  train_loss=4.1864 train_acc=0.2092  val_loss=4.2685 val_acc=0.2127 val_ppl=71.41  (19.0s)
+  ep 25/30  train_loss=4.1095 train_acc=0.2147  val_loss=4.2566 val_acc=0.2176 val_ppl=70.57  (19.1s)
+  ep 26/30  train_loss=4.0747 train_acc=0.2172  val_loss=4.2452 val_acc=0.2147 val_ppl=69.77  (18.9s)
+  ep 27/30  train_loss=4.0519 train_acc=0.2205  val_loss=4.2564 val_acc=0.2148 val_ppl=70.55  (20.0s)
+  ep 28/30  train_loss=4.0265 train_acc=0.2218  val_loss=4.2527 val_acc=0.2176 val_ppl=70.29  (19.7s)
+  ep 29/30  train_loss=3.9831 train_acc=0.2261  val_loss=4.2522 val_acc=0.2166 val_ppl=70.26  (19.8s)
+  ep 30/30  train_loss=3.9698 train_acc=0.2265  val_loss=4.2514 val_acc=0.2163 val_ppl=70.20  (20.1s)
+  test loss=4.1807  acc=0.2276  top5=0.4696  ppl=65.41
+  train wall-clock=574.6s  inference median=72.3ms (1.81 ms/token)
+
+=== Aggregating results ===
+Best by test perplexity: AWD-LSTM (weight-drop + tied embed + var dropout, seq=40) (ppl=65.41)
+
+All outputs written to /Users/sanketbhure/Personal/Practice/outputs/
+- plots/comparison.png  (val loss & acc across all experiments)
+- plots/best_detail.png (best experiment loss & acc)
+- plots/<name>.png      (per-experiment loss & acc)
+- results/all_runs.json (machine-readable summary)
+- results/summary_table.md (human-readable summary)
+- samples/best_samples.md (generated text + top-5 trace)
+- diagrams/best_architecture.drawio

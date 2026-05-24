@@ -161,6 +161,52 @@ def diagram_bilstm(label: str = "BiLSTM-256") -> str:
     return _wrap("\n".join(cells), name=label)
 
 
+def diagram_lstm_enhanced(label: str = "Stacked LSTM + Tied Embed + Variational Dropout") -> str:
+    cells = []
+    cells.append(_box("in", 320, 20, 220, 50, "Input token ids&#10;(B, T=40)", *C_IN))
+    cells.append(_box("emb", 280, 100, 300, 60,
+                      "Embedding&#10;vocab → 256&#10;weights TIED with output FC", *C_EMB))
+    cells.append(_box("vd_in", 320, 180, 220, 40, "Variational Dropout(p=0.3)&#10;(one mask shared across time)", *C_MIX))
+    cells.append(_box("lstm1", 280, 240, 300, 55, "LSTM layer 1&#10;input=256, hidden=256", *C_RNN))
+    cells.append(_box("inter", 320, 310, 220, 40, "Inter-layer Dropout(p=0.4)", *C_MIX))
+    cells.append(_box("lstm2", 280, 365, 300, 55, "LSTM layer 2&#10;input=256, hidden=256", *C_RNN))
+    cells.append(_box("vd_out", 320, 435, 220, 40, "Variational Dropout(p=0.4)", *C_MIX))
+    cells.append(_box("last", 320, 495, 220, 40, "h_T = H[:, -1, :]  (B, 256)", *C_SPLIT))
+    cells.append(_box("fc", 280, 555, 300, 60,
+                      "Linear: 256 → vocab&#10;weights SHARED with embedding", *C_FC))
+    cells.append(_box("out", 280, 640, 300, 50, "softmax → top-k for next word", *C_IN))
+    edges = [("in", "emb"), ("emb", "vd_in"), ("vd_in", "lstm1"), ("lstm1", "inter"),
+             ("inter", "lstm2"), ("lstm2", "vd_out"), ("vd_out", "last"),
+             ("last", "fc"), ("fc", "out")]
+    cells.extend(_arrow(a, b) for a, b in edges)
+    return _wrap("\n".join(cells), name=label)
+
+
+def diagram_awd_lstm(label: str = "AWD-LSTM") -> str:
+    cells = []
+    cells.append(_box("in", 320, 20, 220, 50, "Input token ids&#10;(B, T=40)", *C_IN))
+    cells.append(_box("emb_drop", 280, 100, 300, 50,
+                      "Embedding Dropout(p=0.1)&#10;(zero whole vocabulary rows)", *C_MIX))
+    cells.append(_box("emb", 280, 165, 300, 55,
+                      "Embedding&#10;vocab → 256 (tied with output FC)", *C_EMB))
+    cells.append(_box("vd_in", 320, 235, 220, 40, "Variational Dropout(p=0.4)", *C_MIX))
+    cells.append(_box("wd_lstm1", 240, 295, 380, 60,
+                      "Weight-Dropped LSTM layer 1&#10;DropConnect(p=0.5) on weight_hh_l0", *C_RNN))
+    cells.append(_box("inter", 320, 370, 220, 40, "Inter-layer Dropout(p=0.3)", *C_MIX))
+    cells.append(_box("wd_lstm2", 240, 425, 380, 60,
+                      "Weight-Dropped LSTM layer 2&#10;DropConnect(p=0.5) on weight_hh_l1", *C_RNN))
+    cells.append(_box("vd_out", 320, 500, 220, 40, "Variational Dropout(p=0.4)", *C_MIX))
+    cells.append(_box("last", 320, 560, 220, 40, "h_T = H[:, -1, :]  (B, 256)", *C_SPLIT))
+    cells.append(_box("fc", 280, 620, 300, 60,
+                      "Linear: 256 → vocab&#10;weights SHARED with embedding", *C_FC))
+    cells.append(_box("out", 280, 700, 300, 50, "softmax → top-k for next word", *C_IN))
+    edges = [("in", "emb_drop"), ("emb_drop", "emb"), ("emb", "vd_in"),
+             ("vd_in", "wd_lstm1"), ("wd_lstm1", "inter"), ("inter", "wd_lstm2"),
+             ("wd_lstm2", "vd_out"), ("vd_out", "last"), ("last", "fc"), ("fc", "out")]
+    cells.extend(_arrow(a, b) for a, b in edges)
+    return _wrap("\n".join(cells), name=label)
+
+
 def diagram_for(name: str, label: str) -> str:
     name = name.lower()
     if name == "lstm_small":
@@ -171,6 +217,10 @@ def diagram_for(name: str, label: str) -> str:
         return diagram_stacked_lstm(label)
     if name == "bilstm":
         return diagram_bilstm(label)
+    if name == "lstm_enhanced":
+        return diagram_lstm_enhanced(label)
+    if name == "awd_lstm":
+        return diagram_awd_lstm(label)
     if name == "lstm_bahdanau":
         return diagram_lstm_bahdanau(label)
     if name == "lstm_mhsa":

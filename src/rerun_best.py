@@ -62,9 +62,17 @@ def main():
         vocab_size=DEFAULTS["vocab_size"],
         min_freq=DEFAULTS["min_freq"],
     )
-    train_ds = NextWordDataset(splits.train_ids, DEFAULTS["seq_len"])
-    val_ds = NextWordDataset(splits.val_ids, DEFAULTS["seq_len"])
-    test_ds = NextWordDataset(splits.test_ids, DEFAULTS["seq_len"])
+
+    # Honour any per-experiment seq_len override defined in EXPERIMENTS so the
+    # retrain matches what the sweep actually ran (e.g. AWD-LSTM uses seq=40).
+    from run_experiments import EXPERIMENTS  # local import: avoid cycles at module load
+    exp_cfg = next((e for e in EXPERIMENTS if e["name"] == name), {})
+    seq_len = exp_cfg.get("seq_len", DEFAULTS["seq_len"])
+    print(f"Using seq_len={seq_len} (matches sweep config for {name})")
+
+    train_ds = NextWordDataset(splits.train_ids, seq_len)
+    val_ds = NextWordDataset(splits.val_ids, seq_len)
+    test_ds = NextWordDataset(splits.test_ids, seq_len)
 
     set_seed(DEFAULTS["rng_seed"])
     model = build_model(name, len(splits.vocab))
@@ -88,9 +96,9 @@ def main():
     # Persist weights so future scripts can load this exact checkpoint.
     torch.save({"name": name, "label": label, "state_dict": model.state_dict()}, out_dir / "best_model.pt")
 
-    # Greedy + sampled generation for each seed.
+    # Greedy + sampled generation for each seed. `seq_len` was set above to
+    # respect the EXPERIMENTS override (if any).
     gen_len = DEFAULTS["gen_len"]
-    seq_len = DEFAULTS["seq_len"]
     greedy = []
     sampled = []
     set_seed(DEFAULTS["rng_seed"])

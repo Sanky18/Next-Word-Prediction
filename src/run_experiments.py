@@ -56,6 +56,12 @@ EXPERIMENTS = [
     {"name": "lstm_bahdanau",  "label": "LSTM-256 + Bahdanau Attn"},
     {"name": "lstm_mhsa",      "label": "LSTM-256 + Multi-Head Self-Attn"},
     {"name": "gru_bahdanau",   "label": "GRU-256 + Bahdanau Attn"},
+    # Per-experiment seq_len override (`"seq_len": N`) lets these benefit from
+    # a longer context window without changing the comparable baselines above.
+    {"name": "lstm_enhanced",  "label": "Stacked LSTM + tied embeddings + variational dropout (seq=40)",
+     "seq_len": 40},
+    {"name": "awd_lstm",       "label": "AWD-LSTM (weight-drop + tied embed + var dropout, seq=40)",
+     "seq_len": 40},
 ]
 
 SEEDS_FOR_SAMPLES = [
@@ -254,10 +260,15 @@ def main(argv=None) -> None:
     (out_dir / "results" / "data_summary.json").write_text(json.dumps(summary, indent=2))
     splits.vocab.save(out_dir / "results" / "vocab.json")
 
-    train_ds = NextWordDataset(splits.train_ids, args.seq_len)
-    val_ds = NextWordDataset(splits.val_ids, args.seq_len)
-    test_ds = NextWordDataset(splits.test_ids, args.seq_len)
-    print(f"Windowed sizes: train={len(train_ds):,}  val={len(val_ds):,}  test={len(test_ds):,}")
+    # Default datasets at the CLI-supplied seq_len. Experiments may override
+    # this per-entry via the optional `seq_len` key in EXPERIMENTS — for those
+    # we'll rebuild the Datasets inside the loop. Splits and vocab stay
+    # identical across all experiments; only the windowing changes.
+    default_train_ds = NextWordDataset(splits.train_ids, args.seq_len)
+    default_val_ds = NextWordDataset(splits.val_ids, args.seq_len)
+    default_test_ds = NextWordDataset(splits.test_ids, args.seq_len)
+    print(f"Default windowed sizes (seq_len={args.seq_len}): "
+          f"train={len(default_train_ds):,}  val={len(default_val_ds):,}  test={len(default_test_ds):,}")
 
     # Drop the <pad> index from training loss (it never appears in our data anyway,
     # but this protects us if we ever pad in the future).
@@ -268,6 +279,18 @@ def main(argv=None) -> None:
     for cfg in experiments_to_run:
         name, label = cfg["name"], cfg["label"]
         print(f"\n=== Experiment: {label} ({name}) ===")
+
+        # Per-experiment seq_len override.
+        exp_seq_len = cfg.get("seq_len", args.seq_len)
+        if exp_seq_len != args.seq_len:
+            train_ds = NextWordDataset(splits.train_ids, exp_seq_len)
+            val_ds = NextWordDataset(splits.val_ids, exp_seq_len)
+            test_ds = NextWordDataset(splits.test_ids, exp_seq_len)
+            print(f"  seq_len override: {exp_seq_len}  "
+                  f"(train={len(train_ds):,} val={len(val_ds):,} test={len(test_ds):,})")
+        else:
+            train_ds, val_ds, test_ds = default_train_ds, default_val_ds, default_test_ds
+
         set_seed(DEFAULTS["rng_seed"])  # identical init across experiments
         model = build_model(name, len(splits.vocab))
         n_params = count_parameters(model)
@@ -300,7 +323,7 @@ def main(argv=None) -> None:
         prof = profile_inference(
             model, splits.vocab,
             seed_text=PROFILE_SEED, gen_len=DEFAULTS["gen_len"],
-            seq_len=args.seq_len, device=device,
+            seq_len=exp_seq_len, device=device,
         )
 
         # Sample generations (greedy) — store full output + top-5 trace for the first one.
@@ -308,7 +331,7 @@ def main(argv=None) -> None:
         for i, seed in enumerate(SEEDS_FOR_SAMPLES):
             out_text, steps = generate_text(
                 seed, DEFAULTS["gen_len"], model, splits.vocab,
-                seq_len=args.seq_len, temperature=1.0, device=device, sample=False,
+                seq_len=exp_seq_len, temperature=1.0, device=device, sample=False,
             )
             samples.append({"seed": seed, "text": out_text, "topk_trace": steps if i == 0 else None})
 
@@ -317,6 +340,7 @@ def main(argv=None) -> None:
         run = {
             "name": name,
             "label": label,
+            "seq_len": exp_seq_len,
             "parameters": n_params,
             "train_seconds": train_seconds,
             "peak_mem_mb": peak_mem_mb,

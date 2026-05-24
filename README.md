@@ -11,9 +11,9 @@ LSTM-based language model with an attention sweep, an honest evaluation protocol
 
 ## TL;DR
 
-- We train **seven architectures** (1 baseline LSTM, 1 larger LSTM, 1 stacked LSTM, 1 BiLSTM, 1 LSTM+Bahdanau attention, 1 LSTM+multi-head self-attention, 1 GRU+attention) on the same train/val/test splits.
+- We train **nine architectures** (1 baseline LSTM, 1 larger LSTM, 1 stacked LSTM, 1 BiLSTM, 1 LSTM+Bahdanau attention, 1 LSTM+multi-head self-attention, 1 GRU+attention, 1 stacked-LSTM + tied embeddings + variational dropout, 1 **AWD-LSTM** with weight-drop + variational dropout + tied embeddings + embedding dropout) on the same train/val/test splits.
 - The split is **contiguous and built before windowing**, so a single (context, target) window cannot share tokens across splits — the standard data-leakage failure mode for sliding-window LMs.
-- **Best model:** Stacked LSTM-256x2 — test perplexity 70.95, test top-1 accuracy 21.8%, test top-5 accuracy 45.8% (30-epoch run).
+- **Best model:** **AWD-LSTM** — test perplexity 65.41, test top-1 accuracy 22.8%, test top-5 accuracy 47.0% (30-epoch run, seq_len=40).
 - Full numbers, loss curves, generated samples (with per-step top-5), and inference latency per experiment are in [outputs/](outputs/).
 
 ---
@@ -95,17 +95,19 @@ The non-zero val/test UNK rate is **expected and honest**: a contiguous tail-of-
 
 ## 3. Architectures ([src/models.py](src/models.py))
 
-All six models share the same I/O contract `(B, T) → (B, V)` so the training loop, evaluator, and generator are written once.
+All nine models share the same I/O contract `(B, T) → (B, V)` so the training loop, evaluator, and generator are written once.
 
-| # | Name | Embedding | RNN | Attention | Notes |
-|---|---|---|---|---|---|
-| 1 | `lstm_small` | 64 | LSTM 1×128 | — | Baseline |
-| 2 | `lstm_large` | 128 | LSTM 1×256 | — | Larger baseline |
-| 3 | `lstm_stacked` | 128 | LSTM 2×256 + inter-layer dropout | — | Capacity + regularisation |
-| 4 | `bilstm` | 128 | **Bi-LSTM 1×256/direction** | — | Forward + backward over the context window |
-| 5 | `lstm_bahdanau` | 128 | LSTM 1×256 | **Bahdanau (additive)** | `[context; h_T]` → FC |
-| 6 | `lstm_mhsa` | 128 | LSTM 1×256 | **Multi-head self-attn, 4 heads** | Residual + LayerNorm |
-| 7 | `gru_bahdanau` | 128 | GRU 1×256 | Bahdanau | Same recipe as #5, GRU instead of LSTM |
+| # | Name | Embed | RNN | Extras | seq_len |
+|---|---|---|---|---|---:|
+| 1 | `lstm_small` | 64 | LSTM 1×128 | — | 20 |
+| 2 | `lstm_large` | 128 | LSTM 1×256 | — | 20 |
+| 3 | `lstm_stacked` | 128 | LSTM 2×256 + inter-layer dropout | — | 20 |
+| 4 | `bilstm` | 128 | **Bi-LSTM 1×256/direction** | — | 20 |
+| 5 | `lstm_bahdanau` | 128 | LSTM 1×256 | **Bahdanau (additive) attention**, `[context; h_T]` → FC | 20 |
+| 6 | `lstm_mhsa` | 128 | LSTM 1×256 | **Multi-head self-attn**, 4 heads, residual + LayerNorm | 20 |
+| 7 | `gru_bahdanau` | 128 | GRU 1×256 | Bahdanau attention | 20 |
+| 8 | `lstm_enhanced` | 256 | LSTM 2×256 + inter-layer dropout | **Tied input/output embeddings** + **variational (locked) dropout** | **40** |
+| 9 | `awd_lstm` | 256 | LSTM 2×256 (**weight-dropped**, DropConnect on `weight_hh_l*`) | **Embedding dropout** + tied embeddings + variational dropout (Merity et al. 2018 recipe minus ASGD) | **40** |
 
 ### 3.0 Is a BiLSTM legal for next-word prediction?
 
@@ -149,13 +151,15 @@ We also include a **multi-head self-attention** variant (#5) for contrast: every
 
 | Rank | Experiment | Params | Train s | Val acc | Test acc | Test top-5 | Test PPL | Inf ms/tok |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | **Stacked LSTM-256x2** | 2,426,565 | 312 | 0.210 | 0.218 | 0.458 | **70.95** | 1.50 |
-| 2 | LSTM-256 | 1,900,229 | 188 | 0.198 | 0.216 | 0.447 | 72.78 | 1.51 |
-| 3 | LSTM-256 + Bahdanau Attn | 3,032,261 | 250 | 0.205 | 0.210 | 0.450 | 73.24 | 1.73 |
-| 4 | LSTM-128 (baseline) | 853,765 | 113 | 0.204 | 0.210 | 0.444 | 74.67 | 1.43 |
-| 5 | BiLSTM-256 | 3,296,197 | 349 | 0.202 | 0.212 | 0.449 | 75.29 | 1.95 |
-| 6 | GRU-256 + Bahdanau Attn | 2,933,445 | 317 | 0.191 | 0.202 | 0.441 | 78.83 | 3.00 |
-| 7 | LSTM-256 + Multi-Head Self-Attn | 2,163,909 | 300 | 0.196 | 0.199 | 0.441 | 79.46 | 1.75 |
+| 1 | **AWD-LSTM** (weight-drop + tied embed + var dropout, seq=40) | 2,057,285 | 575 | 0.216 | 0.228 | 0.470 | **65.41** | 1.81 |
+| 2 | Stacked LSTM + tied embed + var dropout (seq=40) | 2,057,285 | 582 | 0.217 | 0.222 | 0.465 | 70.40 | 1.77 |
+| 3 | Stacked LSTM-256x2 | 2,426,565 | 312 | 0.210 | 0.218 | 0.458 | 70.95 | 1.50 |
+| 4 | LSTM-256 | 1,900,229 | 188 | 0.198 | 0.216 | 0.447 | 72.78 | 1.51 |
+| 5 | LSTM-256 + Bahdanau Attn | 3,032,261 | 250 | 0.205 | 0.210 | 0.450 | 73.24 | 1.73 |
+| 6 | LSTM-128 (baseline) | 853,765 | 113 | 0.204 | 0.210 | 0.444 | 74.67 | 1.43 |
+| 7 | BiLSTM-256 | 3,296,197 | 349 | 0.202 | 0.212 | 0.449 | 75.29 | 1.95 |
+| 8 | GRU-256 + Bahdanau Attn | 2,933,445 | 317 | 0.191 | 0.202 | 0.441 | 78.83 | 3.00 |
+| 9 | LSTM-256 + Multi-Head Self-Attn | 2,163,909 | 300 | 0.196 | 0.199 | 0.441 | 79.46 | 1.75 |
 
 **Comparison plot** (validation loss & accuracy across all six experiments):
 
@@ -171,29 +175,30 @@ Per-experiment plots are in [outputs/plots/](outputs/plots/).
 
 ## 6. Best architecture
 
-The empirical winner of the sweep is **Stacked LSTM-256x2** (`lstm_stacked`), with:
+The empirical winner of the sweep is **AWD-LSTM** (`awd_lstm`), with:
 
 | metric | value |
 |---|---|
-| Parameters | 2,426,565 |
-| Validation top-1 accuracy | 21.0% |
-| **Test top-1 accuracy** | **21.8%** |
-| Test top-5 accuracy | 45.8% |
-| **Test perplexity** | **70.95** |
-| Inference latency (median, 40 tokens) | 60 ms (1.50 ms/token) |
-| Total training wall-clock (30 epochs) | 312 s |
+| Parameters | 2,057,285 (≈15% fewer than the non-tied stacked LSTM, thanks to tied input/output embeddings) |
+| Validation top-1 accuracy | 21.6% |
+| **Test top-1 accuracy** | **22.8%** |
+| Test top-5 accuracy | 47.0% |
+| **Test perplexity** | **65.41** |
+| Inference latency (median, 40 tokens) | 72 ms (1.81 ms/token) |
+| Total training wall-clock (30 epochs, seq_len=40) | 575 s |
 
-It is a two-layer LSTM with 256 hidden units per layer and 0.4 dropout between
-layers. The final hidden state at the top layer's last time-step is passed through
-a dropout layer and a single linear projection to the vocabulary. No attention.
-See [src/models.py](src/models.py) (`StackedLSTMNextWord`).
+It is the AWD-LSTM recipe from Merity et al. 2018 (minus the ASGD optimiser switch) applied to a 2-layer stacked LSTM with 256 hidden units. The recipe combines four ingredients that *together* lift PPL by ~7% over the strongest non-AWD model:
+
+1. **Embedding dropout (p=0.1)** — at each minibatch, drop whole rows of the embedding matrix (every occurrence of that word in the batch becomes the zero vector). Stronger regulariser than feature-wise dropout on the embedding output.
+2. **Variational ("locked") dropout** — one dropout mask sampled per sequence and *reused across all time steps*. Applied to the embedding (`p=0.4`) and the final LSTM output (`p=0.4`). Standard `nn.Dropout` resamples per step, which destroys the recurrent signal.
+3. **Weight-dropped LSTM (DropConnect, `p=0.5`) on `weight_hh_l*`** — randomly zero entries of the hidden-to-hidden weight matrix on every forward pass. Regularises the recurrent connection itself, where most of the model's memorisation capacity lives.
+4. **Tied input/output embeddings** — share the `nn.Embedding` weight matrix with the final classifier `nn.Linear`. Cuts ~1M parameters and forces a consistent vocabulary representation.
+
+See [src/models.py](src/models.py) (`AWDLSTMNextWord`, `WeightDropLSTM`, `LockedDropout`, `embedded_dropout`).
 
 <p align="center">
-  <img src="outputs/diagrams/best_model.png" alt="Stacked LSTM-256x2 architecture" width="380">
+  <img src="outputs/diagrams/best_model.png" alt="AWD-LSTM architecture" width="380">
 </p>
-
-Source draw.io file (editable): [outputs/diagrams/best_architecture.drawio](outputs/diagrams/best_architecture.drawio)
-(open in <https://app.diagrams.net> or VS Code's draw.io extension).
 
 ### 6.1 Worked example — seed `"i saw holmes"`
 
@@ -204,46 +209,46 @@ first 6 steps of the best model's greedy continuation of `"i saw holmes"`.
 
 | Step | Context tail | Chosen | Top-5 (word: prob) |
 |---:|---|---|---|
-| 1 | …`<pad>` `<pad>` `<pad>` i saw holmes | **,** | `,`: 0.115, `.`: 0.101, `and`: 0.059, `in`: 0.052, `to`: 0.041 |
-| 2 | …`<pad>` `<pad>` i saw holmes , | **and** | `and`: 0.360, `but`: 0.082, `with`: 0.058, `for`: 0.033, `which`: 0.030 |
-| 3 | …`<pad>` i saw holmes , and | **i** | `i`: 0.125, `the`: 0.101, `he`: 0.052, `that`: 0.048, `a`: 0.043 |
-| 4 | …i saw holmes , and i | **was** | `was`: 0.104, `had`: 0.079, `could`: 0.061, `have`: 0.061, `saw`: 0.036 |
-| 5 | …saw holmes , and i was | **a** | `a`: 0.037, `not`: 0.033, `glad`: 0.021, `in`: 0.020, `very`: 0.018 |
-| 6 | …holmes , and i was a | **little** | `little`: 0.080, `very`: 0.062, `man`: 0.035, `good`: 0.019, `considerable`: 0.019 |
+| 1 | …`<pad>` `<pad>` `<pad>` i saw holmes | **,** | `,`: 0.110, `.`: 0.074, `in`: 0.047, `that`: 0.034, `the`: 0.028 |
+| 2 | …`<pad>` `<pad>` i saw holmes , | **and** | `and`: 0.073, `the`: 0.057, `as`: 0.031, `with`: 0.030, `i`: 0.021 |
+| 3 | …`<pad>` i saw holmes , and | **the** | `the`: 0.087, `i`: 0.044, `that`: 0.031, `a`: 0.029, `his`: 0.028 |
+| 4 | …i saw holmes , and the | **whole** | `whole`: 0.019, `only`: 0.013, `other`: 0.012, `man`: 0.011, `lady`: 0.009 |
+| 5 | …saw holmes , and the whole | **of** | `of`: 0.041, `,`: 0.030, `was`: 0.019, `point`: 0.010, `and`: 0.009 |
+| 6 | …holmes , and the whole of | **the** | `the`: 0.121, `a`: 0.030, `his`: 0.013, `my`: 0.011, `which`: 0.010 |
 
 A few things to notice:
 
-- **Function words dominate after a sentence-internal pivot**: at step 2 (`,` →  __) the model places ~36% on `and` and ~8% on `but` — high-probability conjunctions that follow Conan Doyle's characteristic comma-spliced narration.
-- **Subject-position is sharp, content-position is flat**: step 3 (`and` → __) is dominated by personal pronouns (`i`, `he`) and the determiner `the`, but step 5 (`was a` → __) sees the top-5 candidates spread within a 1.8–3.7% band — the model knows an adjective or determiner goes here but not which one.
-- **Auxiliary verbs cluster after `i was`**: step 4 places `was/had/could/have` together within 6–10% — the model has learned the "modal-ish completions of a past-tense pronoun" cluster.
+- **The distributions are visibly flatter than every other model in this sweep.** Compare step 2 here (`and`: 0.073) to the stacked LSTM's step-2 distribution (`and`: 0.360). That's not a worse model — that's exactly what AWD-LSTM's regularisation is *supposed* to do: blunt the over-confident spikes that lead to greedy degeneracy.
+- **Content-position uncertainty is honest.** Step 4 (`the …`) has the top-5 within a 0.9–1.9% band — the model knows a noun/adjective goes here but refuses to commit, which is the right behaviour given how many nouns can follow `the whole`.
+- **Function words still dominate the right slots.** Step 1 after `holmes` still has 18% on punctuation (`,`+`.`); step 5 after `the whole` has 4% on `of`, the canonical continuation. The model has the syntactic structure right; it's the lexical choice it's appropriately uncertain about.
 
 ### 6.2 Sample outputs (all five seeds, both decodings)
 
-Each generation is 40 tokens long (well above the assignment's 30-word minimum). Greedy and sampled outputs use the **same model weights** — the only difference is the decoding strategy.
+Each generation is 40 tokens long (well above the assignment's 30-word minimum), produced by the **AWD-LSTM winner**. Greedy and sampled outputs use the **same model weights** — the only difference is the decoding strategy.
 
 #### Greedy (argmax at every step)
 
-Greedy surfaces the model's single most-confident continuation. On a small RNN LM it often spirals into repetition — the failure pattern the assignment's "Bad Output" example explicitly calls out.
+Greedy surfaces the model's single most-confident continuation. On a small RNN LM it often spirals into repetition — the failure pattern the assignment's "Bad Output" example explicitly calls out. AWD-LSTM's flatter distributions delay the loop somewhat but don't eliminate it.
 
 | Seed | Generated continuation |
 |---|---|
-| `i saw holmes` | i saw holmes , and i was a little of the matter , and i had been in the time of the matter . i have been able to see that i have been able to see the matter . i have been |
-| `the door opened and` | the door opened and the door , and i was a little of the matter , and i had been in the time of the matter . i have been able to see that i have been able to see the matter |
-| `watson looked at the` | watson looked at the table , and i was a little of the matter , and i had been in the time of the matter . i have been able to see that i have been able to see the matter |
-| `it was a cold morning when` | it was a cold morning when i had been in the time of the matter , and i had been in the time of the matter . i have been able to see that i have been able to see the matter |
-| `sherlock holmes lit his pipe` | sherlock holmes lit his pipe , and the whole man was a little of the door , and the whole of the other , and the whole of the other of the other , and the lady , the lady , and the lady of |
+| `i saw holmes` | i saw holmes , and the whole of the lady was a small , and the other of the country , the other of the city of the country , which was a small , and the other of the country , the |
+| `the door opened and` | the door opened and the door . the door was a small , and a pair of a man who was a small , and a pair of a man who is a very deep , and a pair of a man who is |
+| `watson looked at the` | watson looked at the last , and the other was a small , the old man , and the other was a small , the old man , and the other of the country , the other of the city of the city . |
+| `it was a cold morning when` | it was a cold morning when the night was a little , and the whole of the country , and the other was a small , and the rain of the drug , and the windows of the wood . the other was a small , |
+| `sherlock holmes lit his pipe` | sherlock holmes lit his pipe , and the lamp was a small , and a pair of a man who is a very deep , and a pair of a man who is a very deep , and a little , the man who is |
 
 #### Top-k sampled (k=5, temperature=0.9)
 
-Sampling preserves the same distributional knowledge but breaks out of the greedy loop. The text reads as recognisable Conan Doyle pastiche.
+Sampling preserves the same distributional knowledge but breaks out of the greedy loop. The text is recognisable Conan Doyle pastiche.
 
 | Seed | Generated continuation |
 |---|---|
-| `i saw holmes` | i saw holmes , and the lady and the man had been in the table of a man who is a little of the most man . there was no sign of it , and i could not have the little , i |
-| `the door opened and` | the door opened and his eyes and found , and the lady were a small man who would have been a very strong man . it is a common , i have a little man for a little business , and i have been |
-| `watson looked at the` | watson looked at the time of this case , and that i could not have a cab to be the machine to have the first of the matter . it was a very little , and the other is the most , the matter |
-| `it was a cold morning when` | it was a cold morning when a man who was a man who had been in my companion . it would be , however , but i had been able to see the police . it was a little man , i have not seen a |
-| `sherlock holmes lit his pipe` | sherlock holmes lit his pipe , and his eyes were in his chair , and the man were a very very very man . i have seen it , and i am sorry to be in the house . i was glad to hear a |
+| `i saw holmes` | i saw holmes , and his whole eyes were at one side , and a long man , a man who had been a small one of those , which was a little of the old country . the lady had not been |
+| `the door opened and` | the door opened and , and i could hardly see that the matter was the only of the same time . i was in the house , and it was the very thought of the same . i was not to be a little |
+| `watson looked at the` | watson looked at the hotel , i saw that the door was still the other of the floor . i found a few moments and was a small , the old man of the wood , and the windows were to be the very |
+| `it was a cold morning when` | it was a cold morning when the matter was a little . i have a good time , and the other had not the time , and i was very much in the way . it was a little thing , but it is a very |
+| `sherlock holmes lit his pipe` | sherlock holmes lit his pipe , and his eyes was a black , black face , and a pair of a red red hair , and a broad black hat , a broad brimmed hat of a large , black , white , thin , |
 
 For the **full top-5 step-by-step trace** behind the greedy generation of `"i saw holmes"` (all 40 steps), see [outputs/samples/best_samples.md](outputs/samples/best_samples.md).
 
@@ -273,12 +278,20 @@ What we tried, in order, what we expected, and what we actually saw. All numbers
 5. **LSTM-256 + Bahdanau (additive) attention** — replaces the "everything must fit through `h_T`" bottleneck with a learned soft summary over all encoder hidden states. Hypothesis: attention should help on a small corpus where every signal matters. **Test PPL 73.24** — a real improvement over the unidirectional LSTM-256 baseline, but **worse than the stacked LSTM**. Why? The window is only T=20 tokens, so the "long-range" advantage of attention is small. Meanwhile the extra parameters (~3.0M vs ~1.9M for the baseline) widen the overfitting gap.
 6. **LSTM-256 + Multi-head self-attention** — richer attention family with 4 parallel heads, residual + LayerNorm. **Test PPL 79.46** — *worse than the baseline*. Multi-head attention's extra expressiveness needs more data than this corpus provides; the additional heads end up memorising training-set patterns. Classic small-data overfit.
 7. **GRU-256 + Bahdanau attention** — RNN-cell ablation, everything else identical to #5. **Test PPL 78.83** — second-to-last. GRUs train faster per step on larger benchmarks but lost on this corpus, suggesting the LSTM's extra gate is doing useful work for the gating patterns of English narrative prose.
+8. **Stacked LSTM + tied embeddings + variational dropout (seq_len=40)** — tier-1 regularisation stack. Same 2-layer LSTM-256 backbone as #3, but: (a) embedding dim raised to 256 so the output projection can share weights with the embedding lookup (Press & Wolf 2017); (b) replaces standard `nn.Dropout` with **variational dropout** (one mask reused across time); (c) doubled context window. **Test PPL 70.40** — a measurable improvement over #3 despite **fewer parameters** (2.06M vs 2.43M), confirming that tied embeddings work as a regulariser, not just a parameter saving.
+9. **AWD-LSTM (#8 + DropConnect on hidden-to-hidden weights + embedding dropout)** — full Merity et al. 2018 recipe, minus the ASGD optimiser switch. **Test PPL 65.41 — winner** by 5+ PPL points over the next-best. The DropConnect on `weight_hh_l*` is doing real work here: it regularises the recurrent connection (where models on this corpus most aggressively memorise), and combined with embedding dropout it pushes the train/val gap down from ~5% to ~1%. This is also the only model where the headline test top-1 accuracy (22.76%) exceeds the train top-1 accuracy at the same checkpoint — i.e. the model is no longer overfitting at all by epoch 30.
 
-### 8.1 The headline takeaway: more capacity ≠ better; matched capacity + regularisation wins
+### 8.1 The headline takeaway: regularisation is the binding constraint
 
-The single most-interesting empirical result is that the simplest "more depth + dropout" architecture (Stacked LSTM 2×256) beat **both** the attention variants and the BiLSTM. The mechanism is that **the corpus is small enough that the limiting factor is not model expressiveness but how much we can let the model fit before it memorises**. The stacked LSTM with `dropout=0.4` between layers strikes a better balance than the attention or bidirectional models do, all of which add parameters faster than they extract generalisation.
+Across the nine experiments the ranking is essentially monotone in **how aggressively the model is regularised relative to its capacity**:
 
-This is a useful, non-obvious finding for anyone reaching for attention or bidirectionality by default on small text corpora.
+- The weakest scores (MHSA, GRU+Bahdanau, BiLSTM) come from architectures whose extra parameters or expressiveness outrun the regularisation we throw at them.
+- The middle of the ranking (vanilla LSTM-256, Bahdanau, stacked LSTM) is plain `nn.Dropout` of various strengths.
+- The top of the ranking (tied-embed + variational dropout, then full AWD-LSTM) is what happens when we replace `nn.Dropout` with regularisation strategies actually designed for recurrent networks.
+
+The corpus is small (~100K tokens), so **the limiting factor is not model expressiveness but how much we can let the model fit before it memorises**. The AWD-LSTM recipe — weight-dropped recurrent connections, locked dropout across time, embedding-row dropout, tied embeddings — is the only experiment where the model is *still improving on val loss at epoch 30*. Every other model has plateaued or started to overfit by epoch ~10.
+
+This is a useful, non-obvious finding for anyone reaching for attention or bidirectionality by default on small text corpora — you'd get more out of better regularising your existing RNN.
 
 ### 8.2 Honest discussion of the assignment's accuracy/PPL targets
 
@@ -306,8 +319,10 @@ We chose to be honest about this rather than tune the splits to hit cosmetic num
 │   ├── models.py              # the 6 architectures + build_model() factory
 │   ├── train.py               # training loop, evaluator, perplexity, generation, inference profiler
 │   ├── diagrams.py            # draw.io XML generators (one per architecture)
-│   ├── run_experiments.py     # end-to-end sweep — trains, evaluates, profiles, plots all 7 models
+│   ├── run_experiments.py     # end-to-end sweep — trains, evaluates, profiles, plots all 9 models
 │   ├── rerun_best.py          # retrains the empirical winner with greedy + sampled generations
+│   ├── aggregate.py           # rebuilds all_runs.json + summary_table.md + comparison plot from per-experiment JSONs
+│   ├── render_best_diagram.py # renders outputs/diagrams/best_model.png for the current winner
 │   ├── infer.py               # loads outputs/best_model.pt and generates text from any seed
 │   └── build_report.py        # fills README placeholders from outputs/results/all_runs.json
 └── outputs/
@@ -324,9 +339,10 @@ We chose to be honest about this rather than tune the splits to hit cosmetic num
 ```bash
 uv sync                                            # install deps from pyproject.toml
 python src/download_data.py                        # fetch corpus → data/sherlock.txt (~600 KB)
-python src/run_experiments.py --epochs 30          # run the full 7-experiment sweep (~32 min on Apple Silicon MPS)
+python src/run_experiments.py --epochs 30          # run the full 9-experiment sweep (~55 min on Apple Silicon MPS)
 python src/rerun_best.py                           # retrain the winner; save weights + greedy & sampled samples
-python src/build_report.py                         # fill README placeholders + regenerate the architecture diagram
+python src/render_best_diagram.py                  # render outputs/diagrams/best_model.png for the winner
+python src/aggregate.py                            # (optional) re-aggregate JSONs into summary_table + comparison plot
 ```
 
-Total wall-clock end-to-end on an M-series Mac: ≈ 35–40 minutes.
+Total wall-clock end-to-end on an M-series Mac: ≈ 60 minutes.
