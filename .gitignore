@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# uv / poetry lockfiles — keep these out of the assignment repo to reduce noise
+uv.lock
+poetry.lock
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Stray run artefacts that aren't part of the deliverable
+outputs/run.log
+outputs/rerun.log
+.claude/

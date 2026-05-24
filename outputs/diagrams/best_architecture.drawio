@@ -1,0 +1,27 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="best-arch" name="Stacked LSTM-256x2">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+<mxCell id="in" value="Input token ids&#10;(B, T=20)" style="rounded=1;fillColor=#E1F5FE;strokeColor=#0288D1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="20" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="emb" value="Embedding&#10;vocab → 128" style="rounded=1;fillColor=#FFF3E0;strokeColor=#F57C00;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="100" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="lstm1" value="LSTM layer 1&#10;input=128, hidden=256" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="280" y="180" width="300" height="60" as="geometry"/></mxCell>
+<mxCell id="inter_dp" value="Inter-layer Dropout(p=0.4)" style="rounded=1;fillColor=#ECEFF1;strokeColor=#37474F;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="250" width="220" height="40" as="geometry"/></mxCell>
+<mxCell id="lstm2" value="LSTM layer 2&#10;input=256, hidden=256&#10;output: H = (B, T, 256)" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="280" y="300" width="300" height="60" as="geometry"/></mxCell>
+<mxCell id="hT" value="h_T = H[:, -1, :]&#10;(B, 256)" style="rounded=1;fillColor=#F3E5F5;strokeColor=#6A1B9A;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="380" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="dp" value="Dropout(p=0.4)" style="rounded=1;fillColor=#ECEFF1;strokeColor=#37474F;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="450" width="220" height="40" as="geometry"/></mxCell>
+<mxCell id="fc" value="Linear: 256 → vocab_size" style="rounded=1;fillColor=#FFF8E1;strokeColor=#F9A825;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="320" y="510" width="220" height="50" as="geometry"/></mxCell>
+<mxCell id="out" value="softmax → top-k for next word" style="rounded=1;fillColor=#E1F5FE;strokeColor=#0288D1;whiteSpace=wrap;html=1;" vertex="1" parent="1"><mxGeometry x="280" y="590" width="300" height="50" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="in" target="emb"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="emb" target="lstm1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="lstm1" target="inter_dp"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="inter_dp" target="lstm2"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="lstm2" target="hT"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="hT" target="dp"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="dp" target="fc"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell style="endArrow=classic;html=1;" edge="1" parent="1" source="fc" target="out"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

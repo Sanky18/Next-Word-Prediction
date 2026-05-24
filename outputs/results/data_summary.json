@@ -1,0 +1,10 @@
+{
+  "vocab_size": 3909,
+  "train_tokens": 96372,
+  "val_tokens": 12046,
+  "test_tokens": 12047,
+  "train_unk_rate": 0.03612044992321421,
+  "val_unk_rate": 0.06226133156234435,
+  "test_unk_rate": 0.07230015771561385,
+  "seq_len": 20
+}
