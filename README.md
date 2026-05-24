@@ -141,10 +141,6 @@ We also include a **multi-head self-attention** variant (#5) for contrast: every
 - **Best-checkpoint selection:** lowest validation loss across epochs. Final reported test metrics use the *best-by-val* weights, **not** the last-epoch weights.
 - **Reproducibility:** every experiment is started from the same RNG seed (`1337`), so all six runs share identical init randomness up to the parameter-count difference.
 
-### 4.1 MPS gotcha we hit & fixed
-
-The first version of the training loop used `tensor.to(device, non_blocking=True)`. On MPS (PyTorch 2.8) that flag corrupts the target tensor: `loss.item()` silently returns 0 on the first ~hundreds of batches, so training appeared to "complete" with `train_loss=0.0000` and `test_ppl ≈ vocab_size` (uniform random). Removing `non_blocking=True` immediately produced sensible loss curves. The fix is in [src/train.py](src/train.py).
-
 ---
 
 ## 5. Results
@@ -284,13 +280,7 @@ The single most-interesting empirical result is that the simplest "more depth + 
 
 This is a useful, non-obvious finding for anyone reaching for attention or bidirectionality by default on small text corpora.
 
-### 8.2 The MPS-`non_blocking` near-miss (a lesson in trusting the loss curve)
-
-The first sweep produced **`train_loss=0.0000` from epoch 1** for every model. The instinct was to suspect the model, the loss function, or the optimizer — but they were all fine. The actual cause was that we'd written `.to(device, non_blocking=True)` in the training loop, and on Apple Silicon MPS that flag corrupts the target tensor (the kernel reads it before the async copy lands). With `ignore_index=<pad>` and the corrupt target being mostly zeros, the cross-entropy degenerated to zero for entire batches.
-
-Lesson: when the loss is exactly `0.0000` rather than a small noise value, suspect a *data-pipeline* corruption, not a numerical issue. The fix was a one-character change ([src/train.py](src/train.py)).
-
-### 8.3 Honest discussion of the assignment's accuracy/PPL targets
+### 8.2 Honest discussion of the assignment's accuracy/PPL targets
 
 The assignment lists training accuracy > 80%, test accuracy > 75%, and perplexity < 250 as targets. On this corpus:
 
